@@ -4,8 +4,15 @@
 \alias{fit_Tyler}
 \title{Estimate parameters of a multivariate elliptical distribution to fit data via Tyler's method}
 \usage{
-fit_Tyler(X, initial = NULL, max_iter = 100, ptol = 0.001,
-  ftol = Inf, return_iterates = FALSE, verbose = FALSE)
+fit_Tyler(
+  X,
+  initial = NULL,
+  max_iter = 100,
+  ptol = 0.001,
+  ftol = Inf,
+  return_iterates = FALSE,
+  verbose = FALSE
+)
 }
 \arguments{
 \item{X}{Data matrix containing the multivariate time series (each column is one time series).}
@@ -26,9 +33,8 @@ value to determine convergence of the iterative method (default is \code{Inf}, s
 not active). Note that using this argument might have a computational cost as a convergence
 criterion due to the computation of the log-likelihood (especially when \code{X} is high-dimensional).}
 
-\item{return_iterates}{Logical value indicating whether to record the values of the parameters \code{mu},
-\code{scatter}, and \code{nu} (and possibly the log-likelihood if \code{ftol} is used)
-at each iteration (default is \code{FALSE}).}
+\item{return_iterates}{Logical value indicating whether to record the values of the parameters (and possibly the
+log-likelihood if \code{ftol < Inf}) at each iteration (default is \code{FALSE}).}
 
 \item{verbose}{Logical value indicating whether to allow the function to print messages (default is \code{FALSE}).}
 }
@@ -36,13 +42,14 @@ at each iteration (default is \code{FALSE}).}
 A list containing possibly the following elements:
         \item{\code{mu}}{Mean vector estimate.}
         \item{\code{cov}}{Covariance matrix estimate.}
-        \item{\code{log_likelihood}}{Value of log-likelihood after converge of the estimation algorithm
-                                     (only if \code{ftol < Inf}).}
-        \item{\code{iterates_record}}{Iterates of the parameters (\code{mu} and possibly
-                                      \code{log_likelihood} (if \code{ftol < Inf})) along the iterations
-                                      (only if \code{return_iterates = TRUE}).}
         \item{\code{converged}}{Boolean denoting whether the algorithm has converged (\code{TRUE}) or the maximum number
                                 of iterations \code{max_iter} has reached (\code{FALSE}).}
+        \item{\code{num_iterations}}{Number of iterations executed.}
+        \item{\code{cpu_time}}{Elapsed CPU time.}
+        \item{\code{log_likelihood}}{Value of log-likelihood after converge of the estimation algorithm (if \code{ftol < Inf}).}
+        \item{\code{iterates_record}}{Iterates of the parameters (\code{mu}, \code{scatter},
+                                      and possibly \code{log_likelihood} (if \code{ftol < Inf})) along the iterations
+                                      (if \code{return_iterates = TRUE}).}
 }
 \description{
 Estimate parameters of a multivariate elliptical distribution, namely, the mean vector
