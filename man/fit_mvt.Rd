@@ -8,8 +8,13 @@ fit_mvt(
   X,
   na_rm = TRUE,
   nu = c("kurtosis", "MLE-diag", "MLE-diag-resampled", "iterative"),
-  nu_iterative_method = c("ECME-diag", "ECME", "ECM", "ECME-cov"),
+  nu_iterative_method = c("ECME-diag", "ECME", "ECM", "ECME-cov", "theta-0",
+    "theta-1a", "theta-1b", "theta-2a", "theta-2b", "POP", "POP-sigma-corrected",
+    "POP-sigma-corrected-true"),
   initial = NULL,
+  optimize_mu = TRUE,
+  weights = NULL,
+  scale_minMSE = FALSE,
   factors = ncol(X),
   max_iter = 100,
   ptol = 0.001,
@@ -21,12 +26,12 @@ fit_mvt(
 \arguments{
 \item{X}{Data matrix containing the multivariate time series (each column is one time series).}
 
-\item{na_rm}{Logical value indicating whether to remove observations with some NAs (default) or not, in which
-case they will be imputed at a higher computational cost.}
+\item{na_rm}{Logical value indicating whether to remove observations with some NAs (default).
+Otherwise, the NAs will be imputed at a higher computational cost.}
 
 \item{nu}{Degrees of freedom of the \eqn{t} distribution. Either a number (\code{>2}) or a string indicating the
 method to compute it:
-\itemize{\item{\code{"kurtosis"}: based on the kurtosis obtained from the sampled moments;}
+\itemize{\item{\code{"kurtosis"}: based on the kurtosis obtained from the sampled moments (default method);}
          \item{\code{"MLE-diag"}: based on the MLE assuming a diagonal sample covariance;}
          \item{\code{"MLE-diag-resampled"}: method "MLE-diag" resampled for better stability;}
          \item{\code{"iterative"}: iterative estimation with the rest of the parameters via the EM algorithm.}}}
@@ -35,10 +40,9 @@ method to compute it:
 \itemize{\item{\code{"ECM"}: maximization of the Q function;}
          \item{\code{"ECME"}: maximization of the log-likelihood function;}
          \item{\code{"ECME-diag"}: maximization of the log-likelihood function assuming
-                                   a digonal scatter matrix (default method).}}
-This argument is used only when there are no NAs in the data and no factor model is chosen.}
+                                   a digonal scatter matrix (default method).}}}
 
-\item{initial}{List of initial values of the parameters for the iterative EM estimation method (in case \code{nu = "iterative"}).
+\item{initial}{List of initial values of the parameters for the iterative estimation method (in case \code{nu = "iterative"}).
 Possible elements include:
 \itemize{\item{\code{mu}: default is the data sample mean,}
          \item{\code{cov}: default is the data sample covariance matrix,}
@@ -48,6 +52,13 @@ Possible elements include:
                                    multiplied by the sqrt of the eigenvalues,}
          \item{\code{psi}: default is
                           \code{diag(initial$cov - initial$B \%*\% t(initial$B)).}}}}
+
+\item{optimize_mu}{Boolean indicating whether to optimize \code{mu} (default is \code{TRUE}).}
+
+\item{weights}{Optional weights for each of the observations (the length should be equal to the number of rows of X).}
+
+\item{scale_minMSE}{Logical value indicating whether to scale the scatter and covariance matrices to minimize the MSE
+estimation error by introducing bias (default is \code{FALSE}).}
 
 \item{factors}{Integer indicating number of factors (default is \code{ncol(X)}, so no factor model assumption).}
 
@@ -68,11 +79,13 @@ log-likelihood if \code{ftol < Inf}) at each iteration (default is \code{FALSE})
 \item{verbose}{Logical value indicating whether to allow the function to print messages (default is \code{FALSE}).}
 }
 \value{
-A list containing possibly the following elements:
-        \item{\code{mu}}{Mean vector estimate.}
-        \item{\code{cov}}{Covariance matrix estimate.}
+A list containing (possibly) the following elements:
+        \item{\code{mu}}{Mu vector estimate.}
         \item{\code{scatter}}{Scatter matrix estimate.}
         \item{\code{nu}}{Degrees of freedom estimate.}
+        \item{\code{mean}}{Mean vector estimate: \preformatted{mean = mu}}
+        \item{\code{cov}}{Covariance matrix estimate: \preformatted{cov = nu/(nu-2) * scatter}}
+
         \item{\code{converged}}{Boolean denoting whether the algorithm has converged (\code{TRUE}) or the maximum number
                                 of iterations \code{max_iter} has been reached (\code{FALSE}).}
         \item{\code{num_iterations}}{Number of iterations executed.}
@@ -81,7 +94,7 @@ A list containing possibly the following elements:
                         (only if factor model requested).}
         \item{\code{psi}}{Factor model idiosynchratic variances estimates according to \code{cov = (B \%*\% t(B) + diag(psi)}
                           (only if factor model requested).}
-        \item{\code{log_likelihood}}{Value of log-likelihood after converge of the estimation algorithm (if \code{ftol < Inf}).}
+        \item{\code{log_likelihood_vs_iterations}}{Value of log-likelihood over the iterations (if \code{ftol < Inf}).}
         \item{\code{iterates_record}}{Iterates of the parameters (\code{mu}, \code{scatter}, \code{nu},
                                       and possibly \code{log_likelihood} (if \code{ftol < Inf})) along the iterations
                                       (if \code{return_iterates = TRUE}).}
@@ -96,7 +109,7 @@ obtained from the expectation-maximization (EM) method.
 }
 \details{
 This function estimates the parameters of a multivariate Student's t distribution (\code{mu},
-         \code{cov}, \code{scatter}, and \code{nu}) to fit the data via the expectation–maximization (EM) algorithm.
+         \code{cov}, \code{scatter}, and \code{nu}) to fit the data via the expectation-maximization (EM) algorithm.
          The data matrix \code{X} can contain missing values denoted by NAs.
          The estimation of \code{nu} if very flexible: it can be directly passed as an argument (without being estimated),
          it can be estimated with several one-shot methods (namely, \code{"kurtosis"}, \code{"MLE-diag"},
@@ -110,16 +123,26 @@ library(fitHeavyTail)
 X <- rmvt(n = 1000, df = 6)  # generate Student's t data
 fit_mvt(X)
 
+# setting lower limit for nu
+options(nu_min = 4.01)
+fit_mvt(X, nu = "iterative")
+
 }
 \references{
-Chuanhai Liu and Donald B. Rubin, “ML estimation of the t-distribution using EM and its extensions, ECM and ECME,”
+Chuanhai Liu and Donald B. Rubin, "ML estimation of the t-distribution using EM and its extensions, ECM and ECME,"
 Statistica Sinica (5), pp. 19-39, 1995.
+
+Chuanhai Liu, Donald B. Rubin, and Ying Nian Wu, "Parameter Expansion to Accelerate EM: The PX-EM Algorithm,"
+Biometrika, Vol. 85, No. 4, pp. 755-770, Dec., 1998
 
 Rui Zhou, Junyan Liu, Sandeep Kumar, and Daniel P. Palomar, "Robust factor analysis parameter estimation,"
 Lecture Notes in Computer Science (LNCS), 2019. <https://arxiv.org/abs/1909.12530>
+
+Esa Ollila, Daniel P. Palomar, and Frédéric Pascal, "Shrinking the Eigenvalues of M-estimators of Covariance Matrix,"
+IEEE Trans. on Signal Processing, vol. 69, pp. 256-269, Jan. 2021.
 }
 \seealso{
-\code{\link{fit_Tyler}} and \code{\link{fit_Cauchy}}
+\code{\link{fit_Tyler}}, \code{\link{fit_Cauchy}}, and \code{\link{fit_mvst}}
 }
 \author{
 Daniel P. Palomar and Rui Zhou
