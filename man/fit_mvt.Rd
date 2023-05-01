@@ -7,14 +7,18 @@
 fit_mvt(
   X,
   na_rm = TRUE,
-  nu = c("kurtosis", "MLE-diag", "MLE-diag-resampled", "iterative"),
-  nu_iterative_method = c("ECME-diag", "ECME", "ECM", "ECME-cov", "theta-0",
-    "theta-1a", "theta-1b", "theta-2a", "theta-2b", "POP", "POP-sigma-corrected",
+  nu = c("iterative", "kurtosis", "MLE-diag", "MLE-diag-resampled", "cross-cumulants",
+    "all-cumulants", "Hill"),
+  nu_iterative_method = c("POP", "OPP", "OPP-harmonic", "ECME", "ECM", "POP-approx-1",
+    "POP-approx-2", "POP-approx-3", "POP-approx-4", "POP-exact", "POP-sigma-corrected",
     "POP-sigma-corrected-true"),
   initial = NULL,
   optimize_mu = TRUE,
   weights = NULL,
-  scale_minMSE = FALSE,
+  scale_covmat = FALSE,
+  PX_EM_acceleration = TRUE,
+  nu_update_start_at_iter = 1,
+  nu_update_every_num_iter = 1,
   factors = ncol(X),
   max_iter = 100,
   ptol = 0.001,
@@ -26,21 +30,24 @@ fit_mvt(
 \arguments{
 \item{X}{Data matrix containing the multivariate time series (each column is one time series).}
 
-\item{na_rm}{Logical value indicating whether to remove observations with some NAs (default).
+\item{na_rm}{Logical value indicating whether to remove observations with some NAs (default is \code{TRUE}).
 Otherwise, the NAs will be imputed at a higher computational cost.}
 
 \item{nu}{Degrees of freedom of the \eqn{t} distribution. Either a number (\code{>2}) or a string indicating the
 method to compute it:
-\itemize{\item{\code{"kurtosis"}: based on the kurtosis obtained from the sampled moments (default method);}
-         \item{\code{"MLE-diag"}: based on the MLE assuming a diagonal sample covariance;}
-         \item{\code{"MLE-diag-resampled"}: method "MLE-diag" resampled for better stability;}
-         \item{\code{"iterative"}: iterative estimation with the rest of the parameters via the EM algorithm.}}}
+\itemize{\item{\code{"iterative"}: iterative estimation (with method to be specified in argument
+                                   \code{nu_iterative_method}) with the rest of the parameters (default method);}
+         \item{\code{"kurtosis"}: one-shot estimation based on the kurtosis obtained from the sampled moments;}
+         \item{\code{"MLE-diag"}: one-shot estimation based on the MLE assuming a diagonal sample covariance;}
+         \item{\code{"MLE-diag-resampled"}: like method \code{"MLE-diag"} but resampled for better stability.}}}
 
 \item{nu_iterative_method}{String indicating the method for iteratively estimating \code{nu} (in case \code{nu = "iterative"}):
-\itemize{\item{\code{"ECM"}: maximization of the Q function;}
-         \item{\code{"ECME"}: maximization of the log-likelihood function;}
-         \item{\code{"ECME-diag"}: maximization of the log-likelihood function assuming
-                                   a digonal scatter matrix (default method).}}}
+\itemize{\item{\code{"ECM"}: maximization of the Q function [Liu-Rubin, 1995];}
+         \item{\code{"ECME"}: maximization of the log-likelihood function [Liu-Rubin, 1995];}
+         \item{\code{"OPP"}: estimator from paper [Ollila-Palomar-Pascal, TSP2021, Alg. 1];}
+         \item{\code{"OPP-harmonic"}: variation of \code{"OPP"};}
+         \item{\code{"POP"}: improved estimator as in paper
+                             [Pascal-Ollila-Palomar, EUSIPCO2021, Alg. 1] (default method).}}}
 
 \item{initial}{List of initial values of the parameters for the iterative estimation method (in case \code{nu = "iterative"}).
 Possible elements include:
@@ -57,8 +64,18 @@ Possible elements include:
 
 \item{weights}{Optional weights for each of the observations (the length should be equal to the number of rows of X).}
 
-\item{scale_minMSE}{Logical value indicating whether to scale the scatter and covariance matrices to minimize the MSE
-estimation error by introducing bias (default is \code{FALSE}).}
+\item{scale_covmat}{Logical value indicating whether to scale the scatter and covariance matrices to minimize the MSE
+estimation error by introducing bias (default is \code{FALSE}). This is particularly advantageous
+when the number of observations is small compared to the number of variables.}
+
+\item{PX_EM_acceleration}{Logical value indicating whether to accelerate the iterative method via
+the PX-EM acceleration technique (default is \code{TRUE}) [Liu-Rubin-Wu, 1998].}
+
+\item{nu_update_start_at_iter}{Starting iteration (default is 1) for
+iteratively estimating \code{nu} (in case \code{nu = "iterative"}).}
+
+\item{nu_update_every_num_iter}{Frequency (default is 1) for
+iteratively estimating \code{nu} (in case \code{nu = "iterative"}).}
 
 \item{factors}{Integer indicating number of factors (default is \code{ncol(X)}, so no factor model assumption).}
 
@@ -139,10 +156,15 @@ Rui Zhou, Junyan Liu, Sandeep Kumar, and Daniel P. Palomar, "Robust factor analy
 Lecture Notes in Computer Science (LNCS), 2019. <https://arxiv.org/abs/1909.12530>
 
 Esa Ollila, Daniel P. Palomar, and Frédéric Pascal, "Shrinking the Eigenvalues of M-estimators of Covariance Matrix,"
-IEEE Trans. on Signal Processing, vol. 69, pp. 256-269, Jan. 2021.
+IEEE Trans. on Signal Processing, vol. 69, pp. 256-269, Jan. 2021. <https://doi.org/10.1109/TSP.2020.3043952>
+
+Frédéric Pascal, Esa Ollila, and Daniel P. Palomar, "Improved estimation of the degree of freedom parameter of
+multivariate t-distribution," in Proc. European Signal Processing Conference (EUSIPCO), Dublin, Ireland, Aug. 23-27, 2021.
+<https://doi.org/10.23919/EUSIPCO54536.2021.9616162>
 }
 \seealso{
-\code{\link{fit_Tyler}}, \code{\link{fit_Cauchy}}, and \code{\link{fit_mvst}}
+\code{\link{fit_Tyler}}, \code{\link{fit_Cauchy}}, \code{\link{fit_mvst}},
+         \code{\link{nu_OPP_estimator}}, and \code{\link{nu_POP_estimator}}
 }
 \author{
 Daniel P. Palomar and Rui Zhou
